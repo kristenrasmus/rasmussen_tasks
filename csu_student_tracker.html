@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSU Student Tracker — Rasmussen Lab</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Lora:wght@400;600&family=Source+Sans+3:wght@300;400;500;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f7f5f0; --surface: #fff; --surface2: #f0ede6; --border: #ddd9d0;
+  --text: #1c1a16; --text2: #6a6358; --text3: #a09880;
+  --green: #2a5c3f; --green-light: #e4eeea;
+  --amber: #7a4a0a; --amber-light: #fdf2e3;
+  --red: #8b2020; --red-light: #fdeaea;
+  --blue: #1a3a6b; --blue-light: #e6ecf8;
+  --purple: #4a2a7a; --purple-light: #f0eaf8;
+  --mono: 'IBM Plex Mono', monospace;
+  --serif: 'Lora', serif;
+  --sans: 'Source Sans 3', sans-serif;
+}
+html, body { height: 100%; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+/* ── LOGIN SCREEN ── */
+.login-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #1a3a28 0%, #2a5c3f 60%, #1a3a6b 100%);
+}
+.login-card {
+  background: var(--surface); border-radius: 14px; padding: 40px 44px;
+  width: 420px; max-width: 95vw;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.35);
+}
+.login-logo { text-align: center; margin-bottom: 28px; }
+.login-logo-icon { font-size: 36px; display: block; margin-bottom: 8px; }
+.login-logo h1 { font-family: var(--serif); font-size: 20px; font-weight: 600; color: var(--text); }
+.login-logo p { font-size: 12px; color: var(--text3); font-family: var(--mono); margin-top: 3px; }
+
+.login-tabs { display: flex; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 24px; overflow: hidden; }
+.login-tab { flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text2); background: var(--surface2); transition: all 0.15s; border: none; font-family: var(--sans); }
+.login-tab.active { background: var(--green); color: #fff; }
+.login-tab.active.student { background: var(--purple); }
+
+.login-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.login-field label { font-size: 12px; font-weight: 500; color: var(--text2); }
+.login-field input {
+  font-family: var(--sans); font-size: 14px; padding: 11px 13px;
+  border: 1px solid var(--border); border-radius: 7px; background: var(--surface2);
+  color: var(--text); transition: border-color 0.12s, box-shadow 0.12s; width: 100%;
+}
+.login-field input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(42,92,63,0.12); }
+.login-field input.student-focus:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(74,42,122,0.12); }
+
+.login-btn {
+  width: 100%; padding: 12px; border: none; border-radius: 7px;
+  font-family: var(--sans); font-size: 14px; font-weight: 600; cursor: pointer;
+  background: var(--green); color: #fff; transition: opacity 0.15s; margin-top: 4px;
+}
+.login-btn:hover { opacity: 0.88; }
+.login-btn.student { background: var(--purple); }
+.login-error { background: var(--red-light); border: 1px solid #e8a0a0; color: var(--red); border-radius: 6px; padding: 9px 13px; font-size: 13px; margin-bottom: 14px; display: none; }
+.login-hint { font-size: 11px; color: var(--text3); text-align: center; margin-top: 14px; }
+
+/* ── SETUP SCREEN ── */
+.setup-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #1a3a28 0%, #2a5c3f 60%, #1a3a6b 100%);
+}
+.setup-card {
+  background: var(--surface); border-radius: 14px; padding: 40px 44px;
+  width: 440px; max-width: 95vw; box-shadow: 0 24px 80px rgba(0,0,0,0.35);
+}
+.setup-card h2 { font-family: var(--serif); font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+.setup-card p { font-size: 13px; color: var(--text2); margin-bottom: 24px; line-height: 1.6; }
+.setup-note { background: var(--green-light); border: 1px solid #b0d4bc; border-radius: 6px; padding: 11px 14px; font-size: 12px; color: var(--green); margin-bottom: 20px; line-height: 1.6; }
+
+/* ── APP SHELL ── */
+.app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; display: none; }
+.topbar {
+  color: #fff; padding: 0 24px; display: flex; align-items: center;
+  justify-content: space-between; flex-shrink: 0; height: 56px; gap: 16px;
+  background: var(--green); transition: background 0.2s;
+}
+.topbar.student-mode { background: var(--purple); }
+.topbar-title { font-family: var(--serif); font-size: 16px; font-weight: 600; }
+.topbar-sub { font-family: var(--mono); font-size: 10px; opacity: 0.65; }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.topbar-user { font-size: 12px; opacity: 0.8; font-family: var(--mono); }
+.topbar-btn { background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3); color: #fff; border-radius: 5px; padding: 6px 13px; font-size: 12px; font-family: var(--sans); font-weight: 500; cursor: pointer; }
+.topbar-btn:hover { background: rgba(255,255,255,0.28); }
+
+.body { display: flex; flex: 1; overflow: hidden; }
+.sidebar { width: 220px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; }
+.sidebar-label { padding: 14px 16px 6px; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text3); font-family: var(--mono); }
+.s-item { padding: 11px 16px; cursor: pointer; border-left: 3px solid transparent; transition: background 0.1s; user-select: none; }
+.s-item:hover { background: var(--surface2); }
+.s-item.active { background: var(--green-light); border-left-color: var(--green); }
+.s-item.warn { border-left-color: var(--amber); }
+.s-name { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.s-meta { font-size: 11px; color: var(--text2); margin-top: 2px; font-family: var(--mono); }
+.warn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
+.degree-tag { font-size: 10px; font-family: var(--mono); padding: 1px 5px; border-radius: 3px; }
+.tag-phd { background: var(--blue-light); color: var(--blue); }
+.tag-ms  { background: var(--green-light); color: var(--green); }
+
+.main { flex: 1; overflow-y: auto; padding: 28px 32px; background: var(--bg); }
+.empty-state { display: flex; align-items: center; justify-content: center; height: 200px; color: var(--text3); font-size: 15px; font-style: italic; font-family: var(--serif); }
+
+.student-banner { background: var(--purple-light); border: 1px solid #c8b0e8; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+.student-banner-icon { font-size: 22px; }
+.student-banner-text { font-size: 13px; color: var(--purple); }
+.student-banner-text strong { display: block; font-size: 14px; margin-bottom: 2px; }
+
+.student-header { margin-bottom: 20px; }
+.student-header h1 { font-family: var(--serif); font-size: 22px; font-weight: 600; }
+.student-header .sub { font-size: 13px; color: var(--text2); margin-top: 3px; font-family: var(--mono); }
+
+.alert { border-radius: 6px; padding: 11px 14px; margin-bottom: 12px; font-size: 13px; }
+.alert-warn { background: var(--amber-light); border: 1px solid #e8c070; color: var(--amber); }
+.alert-red  { background: var(--red-light);   border: 1px solid #e8a0a0; color: var(--red); }
+.alert strong { display: block; margin-bottom: 2px; }
+
+.section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+.section-title { font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text3); font-family: var(--mono); margin-bottom: 14px; }
+
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field.full { grid-column: 1 / -1; }
+.field label { font-size: 11px; color: var(--text2); font-weight: 500; }
+.field input, .field select, .field textarea { font-family: var(--sans); font-size: 13px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface2); color: var(--text); width: 100%; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 2px rgba(42,92,63,0.1); }
+.field textarea { resize: vertical; min-height: 80px; }
+
+.tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.tab { padding: 9px 18px; font-size: 13px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text2); transition: all 0.12s; margin-bottom: -1px; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--green); border-bottom-color: var(--green); }
+.tab.active.stu { color: var(--purple); border-bottom-color: var(--purple); }
+
+.milestone-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.milestone-row:last-of-type { border-bottom: none; }
+.mil-name { flex: 1; font-family: var(--sans); font-size: 13px; padding: 6px 8px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--text); }
+.mil-name:not([disabled]):focus { outline: none; border-color: var(--border); background: var(--surface2); }
+.mil-name[disabled] { opacity: 0.65; cursor: default; }
+.mil-date { font-family: var(--mono); font-size: 12px; padding: 6px 8px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--text2); width: 150px; }
+.mil-date:focus { outline: none; border-color: var(--border); background: var(--surface2); }
+.mil-check { width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; accent-color: var(--green); }
+.mil-status { font-size: 11px; font-family: var(--mono); padding: 2px 7px; border-radius: 3px; white-space: nowrap; min-width: 72px; text-align: center; }
+.ms-done    { background: var(--green-light); color: var(--green); }
+.ms-overdue { background: var(--red-light);   color: var(--red); }
+.ms-soon    { background: var(--amber-light);  color: var(--amber); }
+.ms-future  { background: var(--surface2);     color: var(--text3); }
+.rm-btn { background: none; border: none; color: var(--text3); font-size: 18px; cursor: pointer; line-height: 1; padding: 0 2px; }
+.rm-btn:hover { color: var(--red); }
+
+.paper-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 14px; margin-bottom: 10px; }
+.paper-top { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+.paper-title-input { flex: 1; font-family: var(--sans); font-size: 13px; font-weight: 600; background: transparent; border: none; color: var(--text); padding: 0; }
+.paper-title-input:focus { outline: none; border-bottom: 1px solid var(--border); }
+.paper-status-select { font-size: 11px; font-family: var(--mono); padding: 2px 6px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer; }
+.paper-notes { width: 100%; font-family: var(--sans); font-size: 12px; background: transparent; border: none; color: var(--text2); resize: none; min-height: 44px; }
+.paper-notes:focus { outline: none; }
+.paper-footer { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.paper-footer label { font-size: 11px; color: var(--text3); }
+.paper-footer input[type=date] { font-family: var(--mono); font-size: 11px; background: transparent; border: none; color: var(--text2); }
+.paper-remove { margin-left: auto; font-size: 11px; color: var(--text3); cursor: pointer; background: none; border: none; }
+.paper-remove:hover { color: var(--red); }
+
+.note-entry { border-left: 2px solid var(--border); padding: 6px 14px; margin-bottom: 10px; }
+.note-entry.note-stu { border-left-color: var(--purple); }
+.note-date { font-size: 11px; font-family: var(--mono); color: var(--text3); }
+.note-text { font-size: 13px; color: var(--text); margin-top: 2px; white-space: pre-wrap; }
+.note-badge { font-size: 10px; font-family: var(--mono); padding: 1px 6px; border-radius: 3px; margin-left: 8px; }
+.nb-adv { background: var(--green-light); color: var(--green); }
+.nb-stu { background: var(--purple-light); color: var(--purple); }
+
+.btn { border: none; border-radius: 5px; font-family: var(--sans); font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+.btn:hover { opacity: 0.87; }
+.btn-green { background: var(--green); color: #fff; padding: 9px 20px; font-size: 13px; }
+.btn-purple { background: var(--purple); color: #fff; padding: 9px 20px; font-size: 13px; }
+.btn-outline { background: none; border: 1px solid var(--border); color: var(--text2); padding: 8px 16px; font-size: 13px; }
+.btn-outline:hover { background: var(--surface2); opacity: 1; }
+.btn-ghost { background: none; border: 1px dashed var(--border); color: var(--text3); padding: 8px 16px; font-size: 12px; width: 100%; margin-top: 6px; border-radius: 5px; cursor: pointer; }
+.btn-ghost:hover { border-color: var(--green); color: var(--green); }
+.btn-ghost.stu:hover { border-color: var(--purple); color: var(--purple); }
+.btn-small { background: var(--green-light); border: 1px solid #b0d4bc; border-radius: 4px; padding: 6px 12px; font-size: 12px; color: var(--green); cursor: pointer; font-family: var(--sans); font-weight: 500; }
+.save-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+.save-note { font-size: 12px; color: var(--text3); font-style: italic; }
+
+.tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.c-tag { display: flex; align-items: center; gap: 5px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 3px 9px; font-size: 12px; }
+.c-tag-rm { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 15px; line-height: 1; padding: 0; }
+.c-tag-rm:hover { color: var(--red); }
+.tag-add-row { display: flex; gap: 6px; }
+.tag-add-row input { flex: 1; font-family: var(--sans); font-size: 13px; padding: 6px 9px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface2); color: var(--text); }
+.tag-add-row input:focus { outline: none; border-color: var(--green); }
+
+.ai-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-top: 16px; }
+.ai-panel-title { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 8px; }
+.ai-row { display: flex; gap: 10px; align-items: flex-end; }
+.ai-row textarea { flex: 1; font-family: var(--sans); font-size: 13px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--text); resize: none; min-height: 56px; }
+.ai-row textarea:focus { outline: none; border-color: var(--green); }
+.ai-hint { font-size: 11px; color: var(--text3); margin-top: 6px; }
+
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; display: flex; align-items: center; justify-content: center; }
+.modal { background: var(--surface); border-radius: 10px; padding: 26px; width: 400px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+.modal h3 { font-family: var(--serif); font-size: 18px; margin-bottom: 18px; }
+.modal-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+.spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 4px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ── SETUP SCREEN (first launch) ── -->
+<div class="setup-screen" id="setup-screen" style="display:none">
+  <div class="setup-card">
+    <h2>👋 Welcome — first-time setup</h2>
+    <p>Create your advisor password. This is stored only in this browser and never transmitted anywhere.</p>
+    <div class="setup-note">
+      <strong>Security note:</strong> Your password is stored in browser localStorage, not in the HTML file itself — so opening the file in a text editor won't reveal it. Students log in with their last name only and see only their own record.
+    </div>
+    <div class="login-field">
+      <label>Create advisor password</label>
+      <input type="password" id="setup-pw1" placeholder="Choose a password" autocomplete="new-password">
+    </div>
+    <div class="login-field">
+      <label>Confirm password</label>
+      <input type="password" id="setup-pw2" placeholder="Repeat password" autocomplete="new-password">
+    </div>
+    <div class="login-error" id="setup-error"></div>
+    <button class="login-btn" onclick="completeSetup()">Set password & continue</button>
+  </div>
+</div>
+
+<!-- ── LOGIN SCREEN ── -->
+<div class="login-screen" id="login-screen" style="display:none">
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="login-logo-icon">🌩️</span>
+      <h1>Rasmussen Lab</h1>
+      <p>CSU Atmospheric Science · Student Tracker</p>
+    </div>
+
+    <div class="login-tabs">
+      <button class="login-tab active" id="tab-adv" onclick="showLoginTab('advisor')">Advisor</button>
+      <button class="login-tab" id="tab-stu" onclick="showLoginTab('student')">Student</button>
+    </div>
+
+    <!-- Advisor login -->
+    <div id="login-advisor-panel">
+      <div class="login-field">
+        <label>Advisor password</label>
+        <input type="password" id="adv-pw" placeholder="Enter your password" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter')attemptAdvisorLogin()">
+      </div>
+      <div class="login-error" id="adv-error">Incorrect password. Please try again.</div>
+      <button class="login-btn" onclick="attemptAdvisorLogin()">Sign in as Advisor</button>
+    </div>
+
+    <!-- Student login -->
+    <div id="login-student-panel" style="display:none">
+      <div class="login-field">
+        <label>Your last name</label>
+        <input type="text" id="stu-lastname" class="student-focus" placeholder="e.g. Rivera"
+          onkeydown="if(event.key==='Enter')attemptStudentLogin()">
+      </div>
+      <div class="login-error" id="stu-error">Last name not found. Check spelling or contact your advisor.</div>
+      <button class="login-btn student" onclick="attemptStudentLogin()">View my record</button>
+    </div>
+
+    <div class="login-hint" id="login-hint">Advisor access is password protected.<br>Students enter their last name to view their own record.</div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div class="app" id="app">
+  <div class="topbar" id="topbar">
+    <div>
+      <div class="topbar-title">Rasmussen Lab · Student Tracker</div>
+      <div class="topbar-sub">CSU Department of Atmospheric Science</div>
+    </div>
+    <div class="topbar-right">
+      <div id="stu-sync-wrap" style="display:flex;align-items:center;gap:8px">
+        <span id="stu-sync-status" style="font-size:11px;font-family:var(--mono);opacity:0.8">⟳ Connecting…</span>
+        <button class="topbar-btn" onclick="stuSignIn()" title="Connect Google Drive sync" style="font-size:11px;padding:4px 10px">↻ Sync</button>
+      </div>
+      <span class="topbar-user" id="topbar-user"></span>
+      <button class="topbar-btn" id="add-student-btn" onclick="openAddModal()" style="display:none">+ Add student</button>
+      <button class="topbar-btn" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+  <div class="body">
+    <div class="sidebar" id="sidebar" style="display:none">
+      <div class="sidebar-label">Students</div>
+      <div id="slist"></div>
+    </div>
+    <div class="main" id="main">
+      <div class="empty-state">← Select a student to view their record</div>
+    </div>
+  </div>
+</div>
+
+<!-- Add student modal -->
+<div class="modal-bg" id="add-modal" style="display:none">
+  <div class="modal">
+    <h3>Add new student</h3>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="field"><label>Full name</label><input id="m-name" placeholder="e.g. Sarah Chen"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field"><label>Degree</label><select id="m-degree"><option>PhD</option><option>MS</option></select></div>
+        <div class="field"><label>Start semester</label><input id="m-start" placeholder="e.g. Fall 2024"></div>
+      </div>
+      <div class="field"><label>Research focus</label><input id="m-focus" placeholder="e.g. Orographic precipitation"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="closeAddModal()">Cancel</button>
+      <button class="btn btn-green" onclick="confirmAdd()">Add student</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change password modal -->
+<div class="modal-bg" id="pw-modal" style="display:none">
+  <div class="modal">
+    <h3>Change advisor password</h3>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="field"><label>Current password</label><input type="password" id="pw-current"></div>
+      <div class="field"><label>New password</label><input type="password" id="pw-new1"></div>
+      <div class="field"><label>Confirm new password</label><input type="password" id="pw-new2"></div>
+    </div>
+    <div class="login-error" id="pw-error" style="margin-top:12px"></div>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="closePwModal()">Cancel</button>
+      <button class="btn btn-green" onclick="confirmPwChange()">Update password</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Storage keys ──────────────────────────────────────────────────────
+var DATA_KEY = 'csu_tracker_v3'; // kept for migration
+var PW_KEY   = 'csu_tracker_pw'; // password stays local — device-specific
+
+// ── Auth state ────────────────────────────────────────────────────────
+var currentMode = null;   // 'advisor' | 'student'
+var currentStudentId = null;
+var selId = null;
+var activeTab = 'overview';
+var loginTab = 'advisor';
+
+// ── Password helpers ──────────────────────────────────────────────────
+async function hashPw(pw) {
+  var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+
+// ── Google Drive Sync ─────────────────────────────────────────────────
+var STU_CLIENT_ID = '846207268232-hg1q6r2mdddgf1ncqugq8gvogn9v8t5d.apps.googleusercontent.com';
+var STU_SCOPES    = 'https://www.googleapis.com/auth/drive.appdata';
+var STU_FILENAME  = 'rasmussen_students_data.json';
+var STU_FILE_KEY  = 'stu_drive_file_id';
+
+var stuAccessToken = null;
+var stuFileId      = localStorage.getItem(STU_FILE_KEY) || null;
+var stuSaveTimer   = null;
+var stuSaving      = false;
+
+function setStuSync(state, msg){
+  var el = document.getElementById('stu-sync-status');
+  if(!el) return;
+  var icons={ok:'✓ ',saving:'↑ ',loading:'⟳ ',error:'⚠ '};
+  var colors={ok:'#2a7a4a',saving:'#7a4a0a',loading:'#1a3a6b',error:'#8b2020'};
+  el.textContent=(icons[state]||'')+msg; el.style.color=colors[state]||'#6a6358';
+}
+
+async function stuFindOrCreate(){
+  var r=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%22'+STU_FILENAME+'%22&fields=files(id)',{headers:{Authorization:'Bearer '+stuAccessToken}});
+  var d=await r.json();
+  if(d.files&&d.files.length){return d.files[0].id;}
+  var form=new FormData();
+  form.append('metadata',new Blob([JSON.stringify({name:STU_FILENAME,parents:['appDataFolder']})],{type:'application/json'}));
+  form.append('file',new Blob(['[]'],{type:'application/json'}));
+  var cr=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:'Bearer '+stuAccessToken},body:form});
+  var cd=await cr.json(); return cd.id;
+}
+
+async function stuLoadDrive(){
+  if(!stuFileId) stuFileId=await stuFindOrCreate();
+  localStorage.setItem(STU_FILE_KEY,stuFileId);
+  var r=await fetch('https://www.googleapis.com/drive/v3/files/'+stuFileId+'?alt=media',{headers:{Authorization:'Bearer '+stuAccessToken}});
+  if(!r.ok) return null;
+  var t=await r.text();
+  try{return(t&&t!=='[]')?JSON.parse(t):null;}catch(e){return null;}
+}
+
+async function stuSaveDrive(){
+  if(!stuAccessToken||!stuFileId||stuSaving) return;
+  stuSaving=true; setStuSync('saving','Saving…');
+  try{
+    var form=new FormData();
+    form.append('metadata',new Blob([JSON.stringify({name:STU_FILENAME})],{type:'application/json'}));
+    form.append('file',new Blob([JSON.stringify(students)],{type:'application/json'}));
+    await fetch('https://www.googleapis.com/upload/drive/v3/files/'+stuFileId+'?uploadType=multipart',{method:'PATCH',headers:{Authorization:'Bearer '+stuAccessToken},body:form});
+    setStuSync('ok','Synced '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));
+  }catch(e){setStuSync('error','Sync failed');}
+  stuSaving=false;
+}
+
+function scheduleStuSave(){ clearTimeout(stuSaveTimer); stuSaveTimer=setTimeout(stuSaveDrive,1500); }
+
+// ── Data ──────────────────────────────────────────────────────────────
+function loadStudents(){ try{var r=localStorage.getItem(DATA_KEY);return r?JSON.parse(r):null;}catch(e){return null;} }
+function saveStudents(){ scheduleStuSave(); }
+
+async function stuInitDrive(){
+  setStuSync('loading','Loading…');
+  try{
+    if(!stuFileId) stuFileId=await stuFindOrCreate();
+    localStorage.setItem(STU_FILE_KEY,stuFileId);
+    var driveData=await stuLoadDrive();
+    if(driveData&&driveData.length){
+      students=driveData;
+    } else {
+      // first time — migrate from localStorage
+      var local=loadStudents();
+      if(local&&local.length){students=local;scheduleStuSave();}
+    }
+    setStuSync('ok','Synced');
+  }catch(e){ setStuSync('error','Drive error — using local data'); }
+}
+
+function stuSignIn(){
+  var client=google.accounts.oauth2.initTokenClient({client_id:STU_CLIENT_ID,scope:STU_SCOPES,callback:function(resp){
+    if(resp.error||!resp.access_token){setStuSync('error','Sign-in failed');return;}
+    stuAccessToken=resp.access_token;
+    var sw=document.getElementById('stu-sync-wrap');if(sw)sw.style.display='flex';
+    stuInitDrive();
+  }});
+  client.requestAccessToken();
+}
+
+function stuTrySilentSignIn(){
+  if(!stuFileId){setStuSync('error','Click ↻ to enable Drive sync');return;}
+  var client=google.accounts.oauth2.initTokenClient({client_id:STU_CLIENT_ID,scope:STU_SCOPES,prompt:'',callback:function(resp){
+    if(resp.error||!resp.access_token){setStuSync('error','Click ↻ to sync');return;}
+    stuAccessToken=resp.access_token;
+    var sw=document.getElementById('stu-sync-wrap');if(sw)sw.style.display='flex';
+    stuInitDrive();
+  }});
+  client.requestAccessToken();
+}
+
+var _stuGisAttempts=0;
+function stuWaitForGIS(){
+  if(typeof google!=='undefined'&&google.accounts&&google.accounts.oauth2){stuTrySilentSignIn();}
+  else if(_stuGisAttempts++<50){setTimeout(stuWaitForGIS,100);}
+  else{setStuSync('error','Google not loaded');}
+}
+
+function defaultStudents() {
+  return [
+    { id:1, name:"Lexi Sherman", degree:"PhD", start:"Fall 2021", stage:"Dissertation & Research",
+      focus:"Km-scale climate modeling, heavy rainfall machine learning",
+      committee:["K. Rasmussen"],
+      milestones:[
+        {name:"Prelim exam passed",date:"2023-08-23",done:true},
+        {name:"Dissertation defense",date:"",done:false}
+      ],
+      papers:[
+        {title:"Snow in future climates",status:"In prep",notes:"Needs advisor edit/feedback",due:"",author:"advisor"},
+        {title:"CONUS2 km-scale modeling",status:"In prep",notes:"Needs advisor edit/feedback",due:"",author:"advisor"}
+      ],
+      notes:[]
+    }
+  ];
+}
+
+var students = loadStudents() || defaultStudents();
+
+// ── Utilities ─────────────────────────────────────────────────────────
+function today() { return new Date().toISOString().split('T')[0]; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function get(id) { return students.find(function(s){return s.id===id;}); }
+function current() { return currentMode==='advisor' ? get(selId) : get(currentStudentId); }
+function isAdvisor() { return currentMode==='advisor'; }
+
+// ── Boot sequence ─────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  var pwHash = localStorage.getItem(PW_KEY);
+  if (!pwHash) {
+    document.getElementById('setup-screen').style.display = 'flex';
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+});
+
+// ── Setup ─────────────────────────────────────────────────────────────
+async function completeSetup() {
+  var pw1 = document.getElementById('setup-pw1').value;
+  var pw2 = document.getElementById('setup-pw2').value;
+  var err = document.getElementById('setup-error');
+  err.style.display = 'none';
+  if (!pw1) { err.textContent='Please enter a password.'; err.style.display='block'; return; }
+  if (pw1.length < 4) { err.textContent='Password must be at least 4 characters.'; err.style.display='block'; return; }
+  if (pw1 !== pw2) { err.textContent='Passwords do not match.'; err.style.display='block'; return; }
+  var hash = await hashPw(pw1);
+  localStorage.setItem(PW_KEY, hash);
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ── Login tabs ────────────────────────────────────────────────────────
+function showLoginTab(tab) {
+  loginTab = tab;
+  document.getElementById('tab-adv').className = 'login-tab' + (tab==='advisor'?' active':'');
+  document.getElementById('tab-stu').className = 'login-tab' + (tab==='student'?' active student':'');
+  document.getElementById('login-advisor-panel').style.display = tab==='advisor' ? '' : 'none';
+  document.getElementById('login-student-panel').style.display = tab==='student' ? '' : 'none';
+  document.getElementById('adv-error').style.display = 'none';
+  document.getElementById('stu-error').style.display = 'none';
+}
+
+// ── Advisor login ─────────────────────────────────────────────────────
+async function attemptAdvisorLogin() {
+  var pw = document.getElementById('adv-pw').value;
+  var err = document.getElementById('adv-error');
+  err.style.display = 'none';
+  if (!pw) return;
+  var hash = await hashPw(pw);
+  var stored = localStorage.getItem(PW_KEY);
+  if (hash === stored) {
+    currentMode = 'advisor';
+    document.getElementById('adv-pw').value = '';
+    launchApp();
+  } else {
+    err.style.display = 'block';
+    document.getElementById('adv-pw').value = '';
+    document.getElementById('adv-pw').focus();
+  }
+}
+
+// ── Student login ─────────────────────────────────────────────────────
+function attemptStudentLogin() {
+  var raw = document.getElementById('stu-lastname').value.trim().toLowerCase();
+  var err = document.getElementById('stu-error');
+  err.style.display = 'none';
+  if (!raw) return;
+  var match = students.find(function(s){
+    var parts = s.name.trim().split(/\s+/);
+    var last = parts[parts.length-1].toLowerCase();
+    return last === raw;
+  });
+  if (match) {
+    currentMode = 'student';
+    currentStudentId = match.id;
+    document.getElementById('stu-lastname').value = '';
+    launchApp();
+  } else {
+    err.style.display = 'block';
+    document.getElementById('stu-lastname').focus();
+  }
+}
+
+// ── Launch / logout ───────────────────────────────────────────────────
+function launchApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'none';
+  var app = document.getElementById('app');
+  app.style.display = 'flex';
+  activeTab = 'overview';
+
+  if (isAdvisor()) {
+    document.getElementById('topbar').className = 'topbar';
+    document.getElementById('topbar-user').textContent = 'Dr. Rasmussen';
+    document.getElementById('sidebar').style.display = '';
+    document.getElementById('add-student-btn').style.display = '';
+    if (students.length) selId = students[0].id;
+  } else {
+    document.getElementById('topbar').className = 'topbar student-mode';
+    var s = get(currentStudentId);
+    document.getElementById('topbar-user').textContent = s ? s.name : '';
+    document.getElementById('sidebar').style.display = 'none';
+    document.getElementById('add-student-btn').style.display = 'none';
+  }
+  render();
+}
+
+function logout() {
+  currentMode = null; currentStudentId = null; selId = null; activeTab = 'overview';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  showLoginTab('advisor');
+}
+
+// ── Warnings ──────────────────────────────────────────────────────────
+function getWarnings(s) {
+  var now=new Date(); var w=[];
+  (s.milestones||[]).forEach(function(m){
+    if(m.done||!m.date) return;
+    var d=new Date(m.date); var days=Math.round((d-now)/86400000);
+    if(days<0) w.push({text:m.name+' is overdue (was '+m.date+')',level:'overdue'});
+    else if(days<=60) w.push({text:m.name+' due in '+days+' day'+(days===1?'':'s')+' ('+m.date+')',level:'soon'});
+  });
+  return w;
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────
+function renderSidebar() {
+  if (!isAdvisor()) return;
+  var html='';
+  students.forEach(function(s){
+    var w=getWarnings(s);
+    var cls='s-item'+(s.id===selId?' active':'')+(w.length?' warn':'');
+    var dot=w.length?'<span class="warn-dot"></span>':'';
+    var dtag='<span class="degree-tag '+(s.degree==='PhD'?'tag-phd':'tag-ms')+'">'+esc(s.degree)+'</span>';
+    html+='<div class="'+cls+'" onclick="selectStudent('+s.id+')">'+
+      '<div class="s-name">'+esc(s.name)+dot+dtag+'</div>'+
+      '<div class="s-meta">'+esc(s.start)+' · '+esc(s.stage)+'</div>'+
+    '</div>';
+  });
+  document.getElementById('slist').innerHTML = html;
+}
+
+function selectStudent(id) { selId=id; activeTab='overview'; render(); }
+function switchTab(t) { activeTab=t; renderMain(); }
+
+// ── Main render ───────────────────────────────────────────────────────
+function renderMain() {
+  var el = document.getElementById('main');
+  var s = current();
+  var adv = isAdvisor();
+  var btnCls = adv ? 'btn btn-green' : 'btn btn-purple';
+
+  if (!s) {
+    el.innerHTML = '<div class="empty-state">← Select a student to view their record</div>';
+    return;
+  }
+
+  var w = getWarnings(s);
+  var alerts = w.map(function(x){
+    return '<div class="alert '+(x.level==='overdue'?'alert-red':'alert-warn')+'"><strong>'+(x.level==='overdue'?'⛔ Overdue':'⚠ Upcoming deadline')+'</strong>'+esc(x.text)+'</div>';
+  }).join('');
+
+  var banner = !adv ? '<div class="student-banner"><div class="student-banner-icon">🎓</div><div class="student-banner-text"><strong>Your record, '+esc(s.name)+'</strong>Update your milestones, papers, notes, and bio info below. Your advisor can see all changes.</div></div>' : '';
+
+  var tabs=['overview','milestones','papers','notes'];
+  var tabLabels={overview:'Overview',milestones:'Milestones',papers:'Papers & Editing',notes:'Meeting Notes'};
+  var tabsHtml='<div class="tabs">'+tabs.map(function(t){
+    var cls='tab'+(t===activeTab?' active'+(adv?'':' stu'):'');
+    return '<div class="'+cls+'" onclick="switchTab(\''+t+'\')">'+tabLabels[t]+'</div>';
+  }).join('')+'</div>';
+
+  var content = '';
+
+  // OVERVIEW
+  if (activeTab==='overview') {
+    var ctags=(s.committee||[]).map(function(m,i){
+      var rm=adv?'<button class="c-tag-rm" onclick="removeCommittee('+i+')">×</button>':'';
+      return '<span class="c-tag">'+esc(m)+rm+'</span>';
+    }).join('');
+    content=
+      alerts+
+      '<div class="section"><div class="section-title">Student info</div>'+
+      '<div class="field-grid">'+
+        '<div class="field"><label>Full name</label><input id="f-name" value="'+esc(s.name)+'"></div>'+
+        '<div class="field"><label>Degree</label><select id="f-degree">'+
+          '<option'+(s.degree==='PhD'?' selected':'')+'>PhD</option>'+
+          '<option'+(s.degree==='MS'?' selected':'')+'>MS</option>'+
+        '</select></div>'+
+        '<div class="field"><label>Start semester</label><input id="f-start" value="'+esc(s.start)+'"></div>'+
+        '<div class="field"><label>Program stage</label><select id="f-stage">'+
+          ['coursework','candidacy','prospectus','dissertation','defended'].map(function(v){return '<option'+(s.stage===v?' selected':'')+'>'+v+'</option>';}).join('')+
+        '</select></div>'+
+        '<div class="field full"><label>Research focus</label><input id="f-focus" value="'+esc(s.focus)+'"></div>'+
+      '</div></div>'+
+      '<div class="section"><div class="section-title">Committee members</div>'+
+        '<div class="tag-list">'+ctags+'</div>'+
+        '<div class="tag-add-row"><input id="new-cm" placeholder="Add member name"><button class="btn-small" onclick="addCommittee()">Add</button></div>'+
+      '</div>'+
+      '<div class="save-bar"><span class="save-note">Edit any field above then click Save.</span>'+
+        '<button class="'+btnCls+'" onclick="saveOverview()">Save changes</button></div>';
+
+    // Advisor-only: change password link
+    if (adv) content += '<div style="text-align:right;margin-top:10px"><button class="btn btn-outline" style="font-size:11px;padding:5px 12px" onclick="openPwModal()">Change advisor password</button></div>';
+
+  // MILESTONES
+  } else if (activeTab==='milestones') {
+    var milHtml=(s.milestones||[]).map(function(m,i){
+      var now=new Date(); var d=new Date(m.date);
+      var days=m.date?Math.round((d-now)/86400000):null;
+      var badge,bc;
+      if(m.done){badge='Done';bc='ms-done';}
+      else if(days===null){badge='No date';bc='ms-future';}
+      else if(days<0){badge='Overdue';bc='ms-overdue';}
+      else if(days<=60){badge=days+'d';bc='ms-soon';}
+      else{badge='Upcoming';bc='ms-future';}
+      var nameFld = adv
+        ? '<input class="mil-name" value="'+esc(m.name)+'" onchange="updateMil('+i+',\'name\',this.value)">'
+        : '<input class="mil-name" value="'+esc(m.name)+'" disabled>';
+      var rmFld = adv ? '<button class="rm-btn" onclick="removeMil('+i+')">×</button>' : '';
+      return '<div class="milestone-row">'+nameFld+
+        '<input type="date" class="mil-date" value="'+esc(m.date||'')+'" onchange="updateMil('+i+',\'date\',this.value)">'+
+        '<span class="mil-status '+bc+'">'+badge+'</span>'+
+        '<input type="checkbox" class="mil-check" '+(m.done?'checked':'')+' onchange="updateMil('+i+',\'done\',this.checked)">'+
+        rmFld+'</div>';
+    }).join('');
+    var addMilBtn = adv ? '<button class="btn-ghost" onclick="addMil()">+ Add milestone</button>' : '';
+    content='<div class="section"><div class="section-title">Program milestones</div>'+milHtml+addMilBtn+'</div>';
+
+  // PAPERS
+  } else if (activeTab==='papers') {
+    var sc={'In prep':'#e8eaf6|#1a3a6b','In revision':'#fdf2e3|#7a4a0a','In review':'#fce8f0|#8b1a4a','Submitted':'#e4f2e8|#1a5c30','Published':'#e4eeea|#2a5c3f'};
+    var paperHtml=(s.papers||[]).map(function(p,i){
+      var pts=(sc[p.status]||'#f0ede6|#6a6358').split('|');
+      var rm=adv?'<button class="paper-remove" onclick="removePaper('+i+')">Remove</button>':'';
+      return '<div class="paper-card">'+
+        '<div class="paper-top">'+
+          '<input class="paper-title-input" value="'+esc(p.title)+'" onchange="updatePaper('+i+',\'title\',this.value)">'+
+          '<select class="paper-status-select" style="background:'+pts[0]+';color:'+pts[1]+'" onchange="updatePaper('+i+',\'status\',this.value)">'+
+            ['In prep','In revision','In review','Submitted','Published'].map(function(v){return '<option'+(p.status===v?' selected':'')+'>'+v+'</option>';}).join('')+
+          '</select></div>'+
+        '<textarea class="paper-notes" onchange="updatePaper('+i+',\'notes\',this.value)">'+esc(p.notes)+'</textarea>'+
+        '<div class="paper-footer"><label>Advisor edit deadline:</label>'+
+          '<input type="date" style="font-family:var(--mono);font-size:11px;background:transparent;border:none;color:var(--text2)" value="'+esc(p.due||'')+'" onchange="updatePaper('+i+',\'due\',this.value)">'+
+          rm+'</div></div>';
+    }).join('');
+    var addPBtn='<button class="btn-ghost'+(adv?'':' stu')+'" onclick="addPaper()">+ Add paper / chapter</button>';
+    content='<div class="section"><div class="section-title">Papers & chapters</div>'+paperHtml+addPBtn+'</div>';
+
+  // NOTES
+  } else if (activeTab==='notes') {
+    var noteHtml=(s.notes||[]).slice().reverse().map(function(n){
+      var byAdv=!n.author||n.author==='advisor';
+      var bdg=byAdv?'<span class="note-badge nb-adv">advisor</span>':'<span class="note-badge nb-stu">student</span>';
+      return '<div class="note-entry'+(byAdv?'':' note-stu')+'">'+
+        '<div class="note-date">'+esc(n.date)+bdg+'</div>'+
+        '<div class="note-text">'+esc(n.text)+'</div></div>';
+    }).join('');
+    content=
+      '<div class="section"><div class="section-title">'+(adv?'Add advisor note':'Add your note')+'</div>'+
+        '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px">'+
+          '<textarea id="new-note" style="font-family:var(--sans);font-size:13px;padding:9px 11px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);resize:vertical;min-height:70px;width:100%" placeholder="Notes from today\'s meeting…"></textarea>'+
+          '<div><button class="'+btnCls+'" onclick="addNote()">Save note for today ('+today()+')</button></div>'+
+        '</div></div>'+
+      '<div class="section"><div class="section-title">History</div>'+
+        (noteHtml||'<div style="color:var(--text3);font-size:13px;font-style:italic">No notes yet.</div>')+
+      '</div>';
+  }
+
+  // AI panel
+  var aiHint=adv
+    ? 'e.g. "Alex submitted chapter 2, defense pushed to Oct 15, met today to discuss R2 revisions"'
+    : 'e.g. "I completed chapter 1 edits, sent them to advisor, updated defense target to November"';
+  var aiPanel=
+    '<div class="ai-panel"><div class="ai-panel-title">✦ AI update — describe changes in plain English</div>'+
+    '<div class="ai-row"><textarea id="ai-input" placeholder="'+esc(aiHint)+'"></textarea>'+
+    '<button class="'+btnCls+'" id="ai-btn" onclick="runAI()">Apply</button></div>'+
+    '<div class="ai-hint">Claude will parse your note and update milestones, papers, stage, and log a meeting note automatically.</div></div>';
+
+  el.innerHTML=banner+
+    '<div class="student-header"><h1>'+esc(s.name)+'</h1>'+
+    '<div class="sub">'+esc(s.degree)+' · '+esc(s.focus)+'</div></div>'+
+    tabsHtml+content+aiPanel;
+}
+
+function render() { renderSidebar(); renderMain(); }
+
+// ── Data mutations ────────────────────────────────────────────────────
+function saveOverview() {
+  var s=current(); if(!s) return;
+  s.name=document.getElementById('f-name').value;
+  s.degree=document.getElementById('f-degree').value;
+  s.start=document.getElementById('f-start').value;
+  s.stage=document.getElementById('f-stage').value;
+  s.focus=document.getElementById('f-focus').value;
+  saveStudents();
+  if (isAdvisor()) renderSidebar();
+  renderMain();
+}
+function removeCommittee(i){var s=current();s.committee.splice(i,1);saveStudents();renderMain();}
+function addCommittee(){var inp=document.getElementById('new-cm');if(!inp||!inp.value.trim())return;current().committee.push(inp.value.trim());saveStudents();renderMain();}
+function updateMil(i,f,v){current().milestones[i][f]=v;saveStudents();if(isAdvisor())renderSidebar();}
+function removeMil(i){current().milestones.splice(i,1);saveStudents();renderMain();}
+function addMil(){current().milestones.push({name:'New milestone',date:'',done:false});saveStudents();renderMain();}
+function updatePaper(i,f,v){current().papers[i][f]=v;saveStudents();}
+function removePaper(i){current().papers.splice(i,1);saveStudents();renderMain();}
+function addPaper(){current().papers.push({title:'New paper',status:'In prep',notes:'',due:'',author:currentMode});saveStudents();renderMain();}
+function addNote(){
+  var txt=document.getElementById('new-note');if(!txt||!txt.value.trim())return;
+  current().notes.push({date:today(),text:txt.value.trim(),author:currentMode});
+  saveStudents();renderMain();
+}
+
+// ── Add student ───────────────────────────────────────────────────────
+function openAddModal(){document.getElementById('add-modal').style.display='flex';}
+function closeAddModal(){document.getElementById('add-modal').style.display='none';}
+function confirmAdd(){
+  var name=document.getElementById('m-name').value.trim();
+  if(!name){alert('Please enter a student name.');return;}
+  var deg=document.getElementById('m-degree').value;
+  var mils=deg==='MS'
+    ?[{name:'Coursework complete',date:'',done:false},{name:'Thesis proposal',date:'',done:false},{name:'Thesis defense',date:'',done:false}]
+    :[{name:'Coursework complete',date:'',done:false},{name:'Candidacy exam',date:'',done:false},{name:'Prospectus defense',date:'',done:false},{name:'Dissertation defense',date:'',done:false}];
+  var s={id:Date.now(),name:name,degree:deg,
+    start:document.getElementById('m-start').value||'Fall 2026',
+    stage:'coursework',
+    focus:document.getElementById('m-focus').value||'',
+    committee:['K. Rasmussen'],milestones:mils,papers:[],notes:[]};
+  students.push(s); selId=s.id; activeTab='overview';
+  saveStudents(); closeAddModal(); render();
+  ['m-name','m-start','m-focus'].forEach(function(id){document.getElementById(id).value='';});
+}
+
+// ── Change password ───────────────────────────────────────────────────
+function openPwModal(){document.getElementById('pw-modal').style.display='flex';}
+function closePwModal(){
+  document.getElementById('pw-modal').style.display='none';
+  ['pw-current','pw-new1','pw-new2'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('pw-error').style.display='none';
+}
+async function confirmPwChange(){
+  var cur=document.getElementById('pw-current').value;
+  var n1=document.getElementById('pw-new1').value;
+  var n2=document.getElementById('pw-new2').value;
+  var err=document.getElementById('pw-error');
+  err.style.display='none';
+  if(!cur||!n1||!n2){err.textContent='Please fill in all fields.';err.style.display='block';return;}
+  if(n1.length<4){err.textContent='New password must be at least 4 characters.';err.style.display='block';return;}
+  if(n1!==n2){err.textContent='New passwords do not match.';err.style.display='block';return;}
+  var curHash=await hashPw(cur);
+  if(curHash!==localStorage.getItem(PW_KEY)){err.textContent='Current password is incorrect.';err.style.display='block';return;}
+  var newHash=await hashPw(n1);
+  localStorage.setItem(PW_KEY,newHash);
+  closePwModal();
+  alert('Password updated successfully.');
+}
+
+// ── AI update ─────────────────────────────────────────────────────────
+async function runAI() {
+  var inp=document.getElementById('ai-input');
+  var btn=document.getElementById('ai-btn');
+  var text=inp?inp.value.trim():''; if(!text) return;
+  var s=current(); if(!s) return;
+  btn.innerHTML='<span class="spinner"></span> Updating…'; btn.disabled=true;
+  var who=isAdvisor()?'Dr. Rasmussen (advisor)':s.name+' (student)';
+  var sys=
+    'You are a research group assistant for Dr. Kristen Rasmussen, Associate Professor in Atmospheric Science at Colorado State University.\n'+
+    'Update is from: '+who+'. Today: '+today()+'.\n'+
+    'Return ONLY a valid JSON object with changed fields. Omit unchanged fields.\n\n'+
+    'Fields:\n'+
+    '- stage: coursework|candidacy|prospectus|dissertation|defended\n'+
+    '- focus: string\n'+
+    '- committee: full array of strings\n'+
+    '- milestones: full array [{name, date:"YYYY-MM-DD"|"", done:bool}]\n'+
+    '- papers: full array [{title, status:"In prep"|"In revision"|"In review"|"Submitted"|"Published", notes, due:"YYYY-MM-DD"|"", author}]\n'+
+    '- newNote: string (concise log note for today)\n\n'+
+    'Current record:\n'+JSON.stringify(s,null,2)+'\n\nReturn ONLY valid JSON. No markdown.';
+  try {
+    var res=await fetch('https://rasmussen-proxy.kristenrasmus.workers.dev',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1000,system:sys,messages:[{role:'user',content:text}]})
+    });
+    var data=await res.json();
+    var raw=((data.content||[])[0]||{}).text||'{}';
+    var u=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    if(u.stage)s.stage=u.stage;
+    if(u.focus)s.focus=u.focus;
+    if(u.committee)s.committee=u.committee;
+    if(u.milestones)s.milestones=u.milestones;
+    if(u.papers)s.papers=u.papers;
+    if(u.newNote)s.notes.push({date:today(),text:u.newNote,author:currentMode});
+    saveStudents(); inp.value=''; render();
+  } catch(e){ alert('AI update failed. Check your internet connection and try again.'); }
+  btn.innerHTML='Apply'; btn.disabled=false;
+}
+
+// Enter key support on setup screen
+document.addEventListener('keydown', function(e) {
+  if (e.key==='Enter') {
+    if (document.getElementById('setup-screen').style.display!=='none') { completeSetup(); }
+  }
+});
+
+// ── Boot Drive sync ───────────────────────────────────────────────────
+// Start GIS polling after page load — Drive sync runs in background
+// The app still works without it (falls back to localStorage)
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', stuWaitForGIS);
+} else {
+  stuWaitForGIS();
+}
+</script>
+</body>
+</html>
